@@ -5,6 +5,7 @@ import re
 import random
 import string
 import hashlib
+import json
 
 from google.appengine.ext import db
 
@@ -111,14 +112,15 @@ class AsciiChanHandler(BaseHandler):
 
 class Blog(db.Model):
     subject = db.StringProperty(required=True)
-    blog = db.TextProperty(required=True)
-    created = db.DateProperty(auto_now_add=True)
+    content = db.TextProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add=True)
+    last_modified = db.DateTimeProperty(auto_now=True)
 
     def render(self):
-        self._render_text = self.blog.replace('\n', '<br>')
+        self._render_text = self.content.replace('\n', '<br>')
         return render_str("post.html", b = self)
 
-class BlogFrontHandler(BaseHandler):
+class BlogHandlerBase(BaseHandler):
     def get(self, blog_id=""):
         if blog_id:
             blog = Blog.get_by_id(int(blog_id))
@@ -126,13 +128,37 @@ class BlogFrontHandler(BaseHandler):
                 self.error('404')
                 return
             blogs = [blog]
-            self.render("blog-front.html", blogs=blogs)
         else:
             blogs = Blog.all().order('-created')
-            self.render("blog-front.html", blogs=blogs)
+        self.render_blogs(blogs)
 
-    def post(self):
+    def render_blogs(self, blogs):
         return
+
+class BlogFrontHandler(BlogHandlerBase):
+    def render_blogs(self, blogs):
+        self.render("blog-front.html", blogs=blogs)
+
+class BlogFrontJSONHandler(BlogHandlerBase):
+    def render_blogs(self, blogs):
+        self.response.headers.add_header("Content-Type", "application/json")
+        if blogs.count == 1:
+            blog = {}
+            blog["content"] = blogs[0].content
+            blog["subject"] = blogs[0].subject
+            blog["created"] = blogs[0].created.strftime("%a %B %d %H:%M:%S %Y")
+            blog["last_modified"] = blogs[0].last_modified.strftime("%a %B %d %H:%M:%S %Y")
+            self.write(json.dumps(blog))
+        else:
+            blog_objs = []
+            for blog in blogs:
+                blog_obj = {}
+                blog_obj["content"] = blog.content
+                blog_obj["subject"] = blog.subject
+                blog_obj["created"] = blog.created.strftime("%a %B %d %H:%M:%S %Y")
+                blog_obj["last_modified"] = blog.last_modified.strftime("%a %B %d %H:%M:%S %Y")
+                blog_objs.append(blog_obj)
+            self.write(json.dumps(blog_objs))
 
 class BlogNewPostHandler(BaseHandler):
     def render_front(self, subject="", blog="", error=""):
@@ -143,15 +169,15 @@ class BlogNewPostHandler(BaseHandler):
 
     def post(self):
         subject = self.request.get('subject')
-        blog = self.request.get('content')
+        content = self.request.get('content')
 
-        if subject and blog:
-            blog = Blog(subject=subject, blog=blog)
+        if subject and content:
+            blog = Blog(subject=subject, content=content)
             blog.put()
             self.redirect("/blog/%s" % str(blog.key().id()))
         else:
             error="subject and content please"
-            self.render_front(subject=subject, blog=blog, error=error)
+            self.render_front(subject=subject, content=content, error=error)
 
 class User(db.Model):
     username = db.StringProperty(required=True)
@@ -195,6 +221,10 @@ class BlogSignupHandler(BaseHandler):
             success = False
         if email and not valid_email(email):
             details["email_error"] = "That's not a valid email address"
+            success = False
+        
+        if User.all().filter("username =", username).get():
+            details["username_error"] = "Username already in use"
             success = False
 
         if not success:
@@ -264,7 +294,7 @@ class BlogLoginHandler(BaseHandler):
 
 class BlogLogoutHandler(BaseHandler):
     def get(self):
-        self.response.headers.add_header("Set-Cookie", "user_id=%s; Path=/" % "")
+        self.response.headers.add_header("Set-Cookie", "user_id=; Path=/")
         self.redirect("/blog/signup")
 
 urls = [
@@ -273,7 +303,9 @@ urls = [
     ('/welcome', WelcomeHandler),
     ('/asciichan', AsciiChanHandler),
     ('/blog/?', BlogFrontHandler),
+    ('/blog/.json', BlogFrontJSONHandler), #(?:\.json)
     ('/blog/([0-9]+)', BlogFrontHandler),
+    ('/blog/([0-9]+).json', BlogFrontJSONHandler),
     ('/blog/newpost', BlogNewPostHandler),
     ('/blog/signup', BlogSignupHandler),
     ('/blog/welcome', BlogWelcomeHandler),

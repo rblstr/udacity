@@ -1,5 +1,6 @@
 import webapp2
 import jinja2
+import logging
 
 from google.appengine.ext import db
 
@@ -22,9 +23,25 @@ class Art(db.Model):
     art = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
 
+CACHE = {}
 class AsciiChanHandler(BaseHandler):
+    def top_arts(self, update=True):
+        key = 'top'
+        if not update and key in CACHE:
+            arts = CACHE[key]
+        else:
+            logging.error("DB QUERY")
+            arts = db.GqlQuery("select * "
+                               "from Art "
+                               "order by created desc "
+                               "limit 10")
+            arts = list(arts)
+            CACHE[key] = arts
+        return arts
+
     def render_front(self, title="", art="", error=""):
-        arts = db.GqlQuery("select * from Art order by created desc")
+        arts = self.top_arts()
+
         self.render("front.html", title=title, art=art, error=error, arts=arts)
 
     def get(self):
@@ -37,7 +54,8 @@ class AsciiChanHandler(BaseHandler):
         if title and art:
             a = Art(title=title, art=art)
             a.put()
-            self.redirect("/asciichan")
+            self.top_arts(True)
+            self.redirect("/")
         else:
             error="you need to provide both title and art!"
             self.render_front(title=title, art=art, error=error)
