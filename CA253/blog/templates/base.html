@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <title>rblstr blog</title>
+        <link type="text/css" rel="stylesheet" href="/static/main.css" />
+    </head>
+
+    <body>
+        <div class="main-admin">
+            {% if not login %}
+            <a href="/blog/login">Login</a>
+            |
+            <a href="/blog/signup">Sign Up</a>
+            {% else %}
+            <a href="/blog/newpost">New Post</a>
+            | {{user_name}}
+            <a href="/blog/logout">(Logout)</a>
+            {% endif %}
+        </div>
+        <div>
+            <a href="/blog" class="main-title">
+                rblstr
+            </a>
+        </div>
+        <div id="content">
+            {% block content %}
+            {% endblock %}
+        </div>
+        <div class="age">
+            Queried {{ query_time }} seconds ago
+        </div>
+    </body>
+
+</html>

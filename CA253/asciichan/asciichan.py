@@ -2,6 +2,7 @@ import webapp2
 import jinja2
 import logging
 
+from google.appengine.ext import memcache
 from google.appengine.ext import db
 
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader('templates'),
@@ -23,7 +24,6 @@ class Art(db.Model):
     art = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
 
-CACHE = {}
 class AsciiChanHandler(BaseHandler):
     def top_arts(self, update=True):
         key = 'top'

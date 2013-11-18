@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>rblstr blog login</title>
+    </head>
+
+    <body>
+        <h2>Login</h2>
+        <form method="post">
+            <table>
+                <tr>
+                    <td>
+                        <label>
+                            username:
+                        </label>
+                    </td>
+                    <td>
+                        <input name="username" type="text" value={{username}}>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label>
+                            password:
+                        </label>
+                    </td>
+                    <td>
+                        <input name="password" type="password">
+                    </td>
+                </tr>
+            </table>
+            <label class="error">{{error}}</label>
+            <br>
+            <input type="submit">
+        </form>
+    </body>
+</html>
